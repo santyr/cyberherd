@@ -25,7 +25,7 @@ async def wait_for_paid_invoices():
         await on_invoice_paid(payment)
 
 
-async def on_invoice_paid(payment: Payment) -> None:
+async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.  Likely useful for Nostr, Zap integrations.
 
     if payment.extra.get("tag") == "splitpayments" or payment.extra.get("splitted"):
         # already a splitted payment, ignore
@@ -55,7 +55,7 @@ async def on_invoice_paid(payment: Payment) -> None:
 
             if target.wallet.find("@") >= 0 or target.wallet.find("LNURL") >= 0:
                 safe_amount_msat = amount_msat - fee_reserve(amount_msat)
-                payment_request = await get_lnurl_invoice(
+                payment_request = await get_lnurl_invoice(  #TODO: Dig into this function with accessing Nostr related fields.
                     target.wallet, payment.wallet_id, safe_amount_msat, memo
                 )
             else:
@@ -69,7 +69,7 @@ async def on_invoice_paid(payment: Payment) -> None:
             extra = {**payment.extra, "tag": "splitpayments", "splitted": True}
 
             if payment_request:
-                await pay_invoice(
+                await pay_invoice( #TODO: Look at params for this function.  Should, may be able to pass a webhook url and Zap data.
                     payment_request=payment_request,
                     wallet_id=payment.wallet_id,
                     description=memo,
@@ -77,7 +77,7 @@ async def on_invoice_paid(payment: Payment) -> None:
                 )
 
 
-async def get_lnurl_invoice(
+async def get_lnurl_invoice( #TODO: Dig into this function with accessing Nostr related fields.
     payoraddress, wallet_id, amount_msat, memo
 ) -> Optional[str]:
 
@@ -112,7 +112,7 @@ async def get_lnurl_invoice(
 
     invoice = bolt11.decode(params["pr"])
 
-    lnurlp_payment = await get_standalone_payment(invoice.payment_hash)
+    lnurlp_payment = await get_standalone_payment(invoice.payment_hash) #TODO: look at this function.  This is likely useful.
 
     if lnurlp_payment and lnurlp_payment.wallet_id == wallet_id:
         logger.error(f"split failed. cannot split payments to yourself via LNURL.")
