@@ -6,7 +6,7 @@ from . import db
 from .models import Target
 
 
-async def get_targets(source_wallet: str) -> List[Target]:
+async def get_targets(source_wallet: str) -> List[Target]: #TODO: change to cyberherd
     rows = await db.fetchall(
         "SELECT * FROM splitpayments.targets WHERE source = ?", (source_wallet,)
     )
@@ -19,7 +19,7 @@ async def set_targets(source_wallet: str, targets: List[Target]):
             "DELETE FROM splitpayments.targets WHERE source = ?", (source_wallet,)
         )
         for target in targets:
-            await conn.execute(
+            await conn.execute( #TODO: change to cyberherd
                 """
                 INSERT INTO splitpayments.targets
                   (id, source, wallet, percent, alias)
