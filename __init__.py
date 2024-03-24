@@ -7,23 +7,23 @@ from lnbits.db import Database
 from lnbits.helpers import template_renderer
 from lnbits.tasks import catch_everything_and_restart
 
-db = Database("ext_splitpayments")
+db = Database("ext_splitpayments")  #TODO: change to cyberherd
 
 scheduled_tasks: List[asyncio.Task] = []
 
 splitpayments_static_files = [
     {
-        "path": "/splitpayments/static",
-        "name": "splitpayments_static",
+        "path": "/splitpayments/static", #TODO:  change paths
+        "name": "splitpayments_static",  #TODO: change to cyberherd
     }
 ]
 splitpayments_ext: APIRouter = APIRouter(
-    prefix="/splitpayments", tags=["splitpayments"]
+    prefix="/splitpayments", tags=["splitpayments"]  #TODO: change to cyberherd
 )
 
 
 def splitpayments_renderer():
-    return template_renderer(["splitpayments/templates"])
+    return template_renderer(["splitpayments/templates"]) #TODO: change to cyberherd
 
 
 from .tasks import wait_for_paid_invoices
