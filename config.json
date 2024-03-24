@@ -1,4 +1,4 @@
-{
+{ #TODO:  change to cyberherd
   "name": "Split Payments",
   "short_description": "Split incoming payments across wallets",
   "tile": "/splitpayments/static/image/split-payments.png",
