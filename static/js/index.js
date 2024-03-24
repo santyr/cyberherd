@@ -76,7 +76,7 @@ new Vue({
         )
         .then(response => {
           this.$q.notify({
-            message: 'Split payments targets set.',
+            message: 'CyberHerd targets set.',
             timeout: 700
           })
         })
@@ -97,7 +97,7 @@ new Vue({
             )
             .then(response => {
               this.$q.notify({
-                message: 'Split payments targets deleted.',
+                message: 'CyberHerd targets deleted.',
                 timeout: 700
               })
             })
