@@ -1,9 +1,9 @@
 {
   "repos": [
     {
-      "id": "CyberHerd",
-      "organisation": "lnbits",
-      "repository": "CyberHerd"
+      "id": "cyberherd",
+      "organisation": "santyr",
+      "repository": "cyberherd"
     }
   ]
 }
