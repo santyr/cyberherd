@@ -1,7 +1,7 @@
 { 
   "name": "CyberHerd", 
   "short_description": "CyberHerd splits and Nostr client.",
-  "tile": "/cyberherd/static/image/split-payments.png",
+  "tile": "/cyberherd/static/image/lightning-goats.png",
   "contributors": ["fiatjaf", "cryptograffiti", "santyr"],
   "min_lnbits_version": "0.11.0"
 }
