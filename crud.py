@@ -6,9 +6,9 @@ from . import db
 from .models import Target
 
 
-async def get_targets(source_wallet: str) -> List[Target]: #TODO: change to cyberherd
+async def get_targets(source_wallet: str) -> List[Target]:
     rows = await db.fetchall(
-        "SELECT * FROM splitpayments.targets WHERE source = ?", (source_wallet,)
+        "SELECT * FROM cyberherd.targets WHERE source = ?", (source_wallet,)
     )
     return [Target(**row) for row in rows]
 
@@ -16,12 +16,12 @@ async def get_targets(source_wallet: str) -> List[Target]: #TODO: change to cybe
 async def set_targets(source_wallet: str, targets: List[Target]):
     async with db.connect() as conn:
         await conn.execute(
-            "DELETE FROM splitpayments.targets WHERE source = ?", (source_wallet,)
+            "DELETE FROM cyberherd.targets WHERE source = ?", (source_wallet,)
         )
         for target in targets:
             await conn.execute( #TODO: change to cyberherd
                 """
-                INSERT INTO splitpayments.targets
+                INSERT INTO cyberherd.targets
                   (id, source, wallet, percent, alias)
                 VALUES (?, ?, ?, ?, ?)
             """,

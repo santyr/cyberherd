@@ -47,7 +47,7 @@ new Vue({
       LNbits.api
         .request(
           'GET',
-          '/splitpayments/api/v1/targets',
+          '/cyberherd/api/v1/targets',
           this.selectedWallet.adminkey
         )
         .then(response => {
@@ -68,7 +68,7 @@ new Vue({
       LNbits.api
         .request(
           'PUT',
-          '/splitpayments/api/v1/targets',
+          '/cyberherd/api/v1/targets',
           this.selectedWallet.adminkey,
           {
             targets: this.targets
@@ -92,7 +92,7 @@ new Vue({
           LNbits.api
             .request(
               'DELETE',
-              '/splitpayments/api/v1/targets',
+              '/cyberherd/api/v1/targets',
               this.selectedWallet.adminkey
             )
             .then(response => {

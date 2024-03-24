@@ -1,7 +1,7 @@
 { 
-  "name": "Split Payments", //TODO:  change to cyberherd
-  "short_description": "Split incoming payments across wallets",
-  "tile": "/splitpayments/static/image/split-payments.png",
-  "contributors": ["fiatjaf", "cryptograffiti"],
+  "name": "CyberHerd", 
+  "short_description": "CyberHerd splits and Nostr client.",
+  "tile": "/cyberherd/static/image/split-payments.png",
+  "contributors": ["fiatjaf", "cryptograffiti", "santyr"],
   "min_lnbits_version": "0.11.0"
 }

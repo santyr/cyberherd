@@ -3,11 +3,11 @@ from lnbits.helpers import urlsafe_short_hash
 
 async def m001_initial(db):
     """
-    Initial split payment table.
+    Initial cyberherd payment table.
     """
     await db.execute(
         """
-        CREATE TABLE splitpayments.targets (
+        CREATE TABLE cyberherd.targets (
             wallet TEXT NOT NULL,
             source TEXT NOT NULL,
             percent INTEGER NOT NULL CHECK (percent >= 0 AND percent <= 100),
@@ -23,10 +23,10 @@ async def m002_float_percent(db):
     """
     Add float percent and migrates the existing data.
     """
-    await db.execute("ALTER TABLE splitpayments.targets RENAME TO splitpayments_old")
+    await db.execute("ALTER TABLE cyberherd.targets RENAME TO cyberherd_old")
     await db.execute(
         """
-        CREATE TABLE splitpayments.targets (
+        CREATE TABLE cyberherd.targets (
             wallet TEXT NOT NULL,
             source TEXT NOT NULL,
             percent REAL NOT NULL CHECK (percent >= 0 AND percent <= 100),
@@ -39,11 +39,11 @@ async def m002_float_percent(db):
 
     for row in [
         list(row)
-        for row in await db.fetchall("SELECT * FROM splitpayments.splitpayments_old")
+        for row in await db.fetchall("SELECT * FROM cyberherd.cyberherd_old")
     ]:
         await db.execute(
             """
-            INSERT INTO splitpayments.targets (
+            INSERT INTO cyberherd.targets (
                 wallet,
                 source,
                 percent,
@@ -54,17 +54,17 @@ async def m002_float_percent(db):
             (row[0], row[1], row[2], row[3]),
         )
 
-    await db.execute("DROP TABLE splitpayments.splitpayments_old")
+    await db.execute("DROP TABLE cyberherd.cyberherd_old")
 
 
 async def m003_add_id_and_tag(db):
     """
     Add float percent and migrates the existing data.
     """
-    await db.execute("ALTER TABLE splitpayments.targets RENAME TO splitpayments_old")
+    await db.execute("ALTER TABLE cyberherd.targets RENAME TO cyberherd_old")
     await db.execute(
         """
-        CREATE TABLE splitpayments.targets (
+        CREATE TABLE cyberherd.targets (
             id TEXT PRIMARY KEY,
             wallet TEXT NOT NULL,
             source TEXT NOT NULL,
@@ -79,11 +79,11 @@ async def m003_add_id_and_tag(db):
 
     for row in [
         list(row)
-        for row in await db.fetchall("SELECT * FROM splitpayments.splitpayments_old")
+        for row in await db.fetchall("SELECT * FROM cyberherd.cyberherd_old")
     ]:
         await db.execute(
             """
-            INSERT INTO splitpayments.targets (
+            INSERT INTO cyberherd.targets (
                 id,
                 wallet,
                 source,
@@ -96,7 +96,7 @@ async def m003_add_id_and_tag(db):
             (urlsafe_short_hash(), row[0], row[1], row[2], "", row[3]),
         )
 
-    await db.execute("DROP TABLE splitpayments.splitpayments_old")
+    await db.execute("DROP TABLE cyberherd.cyberherd_old")
 
 
 async def m004_remove_tag(db):
@@ -104,8 +104,8 @@ async def m004_remove_tag(db):
     This removes tag
     """
     keys = "id,wallet,source,percent,alias"
-    new_db = "splitpayments.targets"
-    old_db = "splitpayments.targets_old"
+    new_db = "cyberherd.targets"
+    old_db = "cyberherd.targets_old"
 
     await db.execute(f"ALTER TABLE {new_db} RENAME TO targets_old")
     await db.execute(

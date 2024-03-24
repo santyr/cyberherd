@@ -27,7 +27,7 @@ async def wait_for_paid_invoices():
 
 async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.  Likely useful for Nostr, Zap integrations.
 
-    if payment.extra.get("tag") == "splitpayments" or payment.extra.get("splitted"):
+    if payment.extra.get("tag") == "cyberherd" or payment.extra.get("splitted"):
         # already a splitted payment, ignore
         return
 
@@ -39,10 +39,10 @@ async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.
     total_percent = sum([target.percent for target in targets])
 
     if total_percent > 100:
-        logger.error("splitpayment: total percent adds up to more than 100%")
+        logger.error("cyberherd: total percent adds up to more than 100%")
         return
 
-    logger.trace(f"splitpayments: performing split payments to {len(targets)} targets")
+    logger.trace(f"cyberherd: performing split payments to {len(targets)} targets")
 
     for target in targets:
 
@@ -66,7 +66,7 @@ async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.
                     memo=memo,
                 )
 
-            extra = {**payment.extra, "tag": "splitpayments", "splitted": True}
+            extra = {**payment.extra, "tag": "cyberherd", "splitted": True}
 
             if payment_request:
                 await pay_invoice( #TODO: Look at params for this function.  Should, may be able to pass a webhook url and Zap data.
