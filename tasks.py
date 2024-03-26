@@ -89,11 +89,11 @@ async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optio
         return None
 
     if data.get("allowNostr") and data.get("nostrPubkey"):
-        relays = ['wss://nostr-pub.wellorder.net', 'wss://relay.damus.io', 'wss://relay.primal.net']
+        relays = ['wss://nostr-pub.wellorder.net', 'wss://relay.damus.io', 'wss://relay.primal.net'] #TODO: set from UI, add to DB
         event = {
             "kind": 9734,
             "content": memo,
-            "pubkey": "PUBKEY",  # Replace with sender's pubkey
+            "pubkey": "PUBKEY",  # Replace with sender's pubkey #TODO: set From user split address from UI, add to DB  do this by setting a default lud16 address that is associated with a Nostr key. api_lnurlscan(payoraddress) returns that)
             "created_at": round(time.time()),
             "tags": [
                 ["relays", *relays],
@@ -103,17 +103,17 @@ async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optio
         }
 
         event_json = json.dumps(event)
-        signed_event = sign_event(event_json, "PRIVATE_KEY")  # Signing the event
+        signed_event = sign_event(event_json, "PRIVATE_KEY")  # Signing the event #TODO: set PRIVATE_KEY from UI, add to DB. Double check that the data format is correct. Probably needs to be added to event_json
 
         query_params = {
             "amount": rounded_amount,
-            "nostr": signed_event,  # Including the signed event in the request
+            "nostr": signed_event,  # Include the event in the request  likely need to change to event_data (see TODO above)
         }
 
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    data["callback"],  # The LNURL callback URL
+                    data["callback"],  # The LNURL callback URL.  This request returns the invoice.
                     params=query_params,
                     timeout=40
                 )
