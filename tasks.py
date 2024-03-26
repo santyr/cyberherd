@@ -2,9 +2,12 @@ import asyncio
 import json
 from math import floor
 from typing import Optional
-
 import httpx
+import time
 from loguru import logger
+from ecdsa import SECP256k1, SigningKey
+import hashlib
+import base64
 
 from lnbits import bolt11
 from lnbits.core.crud import get_standalone_payment
@@ -15,6 +18,16 @@ from lnbits.tasks import register_invoice_listener
 
 from .crud import get_targets
 
+def serialize_event(event):
+    return json.dumps(event, sort_keys=True)
+
+def sign_event(event, private_key_hex):
+    serialized_event = serialize_event(event)
+    event_hash = hashlib.sha256(serialized_event.encode('utf-8')).digest()
+    sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
+    signature = sk.sign_deterministic(event_hash)
+    signature_b64 = base64.b64encode(signature).decode('utf-8')
+    return signature_b64
 
 async def wait_for_paid_invoices():
     invoice_queue = asyncio.Queue()
@@ -24,20 +37,15 @@ async def wait_for_paid_invoices():
         payment = await invoice_queue.get()
         await on_invoice_paid(payment)
 
-
-async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.  Likely useful for Nostr, Zap integrations.
-
+async def on_invoice_paid(payment: Payment) -> None:
     if payment.extra.get("tag") == "cyberherd" or payment.extra.get("splitted"):
-        # already a splitted payment, ignore
         return
 
     targets = await get_targets(payment.wallet_id)
-
     if not targets:
         return
 
     total_percent = sum([target.percent for target in targets])
-
     if total_percent > 100:
         logger.error("cyberherd: total percent adds up to more than 100%")
         return
@@ -45,17 +53,13 @@ async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.
     logger.trace(f"cyberherd: performing split payments to {len(targets)} targets")
 
     for target in targets:
-
         if target.percent > 0:
-
             amount_msat = int(payment.amount * target.percent / 100)
-            memo = (
-                f"CyberHerd Treats: {target.percent}% for {target.alias or target.wallet}"
-            )
-
+            memo = f"CyberHerd Treats: {target.percent}% for {target.alias or target.wallet}"
+            payment_request = None
             if target.wallet.find("@") >= 0 or target.wallet.find("LNURL") >= 0:
                 safe_amount_msat = amount_msat - fee_reserve(amount_msat)
-                payment_request = await get_lnurl_invoice(  #TODO: Dig into this function with accessing Nostr related fields.
+                payment_request = await get_lnurl_invoice(
                     target.wallet, payment.wallet_id, safe_amount_msat, memo
                 )
             else:
@@ -67,61 +71,72 @@ async def on_invoice_paid(payment: Payment) -> None: #TODO: Look at this closer.
                 )
 
             extra = {**payment.extra, "tag": "cyberherd", "splitted": True}
-
             if payment_request:
-                await pay_invoice( #TODO: Look at params for this function.  Should, may be able to pass a webhook url and Zap data.
+                await pay_invoice(
                     payment_request=payment_request,
                     wallet_id=payment.wallet_id,
                     description=memo,
                     extra=extra,
                 )
 
-
-async def get_lnurl_invoice( #TODO: Dig into this function with accessing Nostr related fields.
-    payoraddress, wallet_id, amount_msat, memo
-) -> Optional[str]:
-
+async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optional[str]:
     from lnbits.core.views.api import api_lnurlscan
-
     data = await api_lnurlscan(payoraddress)
     rounded_amount = floor(amount_msat / 1000) * 1000
 
-    async with httpx.AsyncClient() as client:
-        try:
-            r = await client.get(
-                data["callback"],
-                params={"amount": rounded_amount, "comment": memo},
-                timeout=40,
-            )
-            if r.is_error:
-                raise httpx.ConnectError("issue with scrub callback")
-            r.raise_for_status()
-        except (httpx.ConnectError, httpx.RequestError):
-            logger.error(
-                f"splitting LNURL failed: Failed to connect to {data['callback']}."
-            )
+    if not (data.get("minSendable") <= abs(rounded_amount) <= data.get("maxSendable")):
+        logger.error(f"Amount {rounded_amount} is out of bounds (min: {data.get('minSendable')}, max: {data.get('maxSendable')})")
+        return None
+
+    if data.get("allowNostr") and data.get("nostrPubkey"):
+        relays = ['wss://nostr-pub.wellorder.net', 'wss://relay.damus.io', 'wss://relay.primal.net']
+        event = {
+            "kind": 9734,
+            "content": memo,
+            "pubkey": "PUBKEY",  # Replace with sender's pubkey
+            "created_at": round(time.time()),
+            "tags": [
+                ["relays", *relays],
+                ["amount", str(rounded_amount)],
+                ["p", data.get("nostrPubkey")],
+            ],
+        }
+
+        event_json = json.dumps(event)
+        signed_event = sign_event(event_json, "PRIVATE_KEY")  # Signing the event
+
+        query_params = {
+            "amount": rounded_amount,
+            "nostr": signed_event,  # Including the signed event in the request
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    data["callback"],  # The LNURL callback URL
+                    params=query_params,
+                    timeout=40
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error occurred: {e}")
+                return None
+            except httpx.RequestError as e:
+                logger.error(f"Request error occurred: {e}")
+                return None
+
+        response_data = response.json()
+        if response_data.get("status") == "ERROR":
+            logger.error(f"Error from LNURL service: {response_data.get('reason')}")
             return None
-        except Exception as exc:
-            logger.error(f"splitting LNURL failed: {str(exc)}.")
+
+        invoice = response_data.get("pr")
+        if not invoice:
+            logger.error("No invoice received in response")
             return None
 
-    params = json.loads(r.text)
-    if params.get("status") == "ERROR":
-        logger.error(f"{data['callback']} said: '{params.get('reason', '')}'")
+        return invoice
+    else:
+        logger.error("LNURL does not support Nostr or missing necessary data")
         return None
 
-    invoice = bolt11.decode(params["pr"])
-
-    lnurlp_payment = await get_standalone_payment(invoice.payment_hash) #TODO: look at this function.  This is likely useful.
-
-    if lnurlp_payment and lnurlp_payment.wallet_id == wallet_id:
-        logger.error(f"split failed. cannot split payments to yourself via LNURL.")
-        return None
-
-    if invoice.amount_msat != rounded_amount:
-        logger.error(
-            f"{data['callback']} returned an invalid invoice. Expected {amount_msat} msat, got {invoice.amount_msat}."
-        )
-        return None
-
-    return params["pr"]
