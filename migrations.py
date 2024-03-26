@@ -1,23 +1,23 @@
 from lnbits.helpers import urlsafe_short_hash
 
-
 async def m001_initial(db):
     """
     Initial cyberherd payment table.
     """
-    await db.execute(
-        """
-        CREATE TABLE cyberherd.targets (
-            wallet TEXT NOT NULL,
-            source TEXT NOT NULL,
-            percent INTEGER NOT NULL CHECK (percent >= 0 AND percent <= 100),
-            alias TEXT,
-
-            UNIQUE (source, wallet)
-        );
-        """
-    )
-
+    # Check if the table already exists
+    exists = await db.fetchone("SELECT to_regclass('cyberherd.targets')")
+    if not exists:
+        await db.execute(
+            """
+            CREATE TABLE cyberherd.targets (
+                wallet TEXT NOT NULL,
+                source TEXT NOT NULL,
+                percent INTEGER NOT NULL CHECK (percent >= 0 AND percent <= 100),
+                alias TEXT,
+                UNIQUE (source, wallet)
+            );
+            """
+        )
 
 async def m002_float_percent(db):
     """
@@ -31,10 +31,9 @@ async def m002_float_percent(db):
             source TEXT NOT NULL,
             percent REAL NOT NULL CHECK (percent >= 0 AND percent <= 100),
             alias TEXT,
-
             UNIQUE (source, wallet)
         );
-    """
+        """
     )
 
     for row in [
@@ -56,7 +55,6 @@ async def m002_float_percent(db):
 
     await db.execute("DROP TABLE cyberherd.cyberherd_old")
 
-
 async def m003_add_id_and_tag(db):
     """
     Add float percent and migrates the existing data.
@@ -71,10 +69,9 @@ async def m003_add_id_and_tag(db):
             percent REAL NOT NULL CHECK (percent >= 0 AND percent <= 100),
             tag TEXT NOT NULL,
             alias TEXT,
-
             UNIQUE (source, wallet)
         );
-    """
+        """
     )
 
     for row in [
@@ -98,12 +95,11 @@ async def m003_add_id_and_tag(db):
 
     await db.execute("DROP TABLE cyberherd.cyberherd_old")
 
-
 async def m004_remove_tag(db):
     """
-    This removes tag
+    This removes the 'tag' column.
     """
-    keys = "id,wallet,source,percent,alias"
+    keys = "id, wallet, source, percent, alias"
     new_db = "cyberherd.targets"
     old_db = "cyberherd.targets_old"
 
@@ -118,7 +114,8 @@ async def m004_remove_tag(db):
             alias TEXT,
             UNIQUE (source, wallet)
         );
-    """
+        """
     )
     await db.execute(f"INSERT INTO {new_db} ({keys}) SELECT {keys} FROM {old_db}")
     await db.execute(f"DROP TABLE {old_db}")
+
