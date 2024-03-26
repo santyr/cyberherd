@@ -1,9 +1,9 @@
 {
   "repos": [
     {
-      "id": "cyberherd",
+      "id": "cyberherd_extension",
       "organisation": "santyr",
-      "repository": "cyberherd"
+      "repository": "cyberherd_extension"
     }
   ]
 }
