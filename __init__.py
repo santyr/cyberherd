@@ -7,23 +7,23 @@ from lnbits.db import Database
 from lnbits.helpers import template_renderer
 from lnbits.tasks import catch_everything_and_restart
 
-db = Database("ext_cyberherd")  #TODO: change to cyberherd
+db = Database("ext_cyberherd")
 
 scheduled_tasks: List[asyncio.Task] = []
 
 cyberherd_static_files = [
     {
-        "path": "/cyberherd/static", #TODO:  change paths
-        "name": "cyberherd_static",  #TODO: change to cyberherd
+        "path": "/cyberherd_extension/static",
+        "name": "cyberherd_static",
     }
 ]
 cyberherd_ext: APIRouter = APIRouter(
-    prefix="/cyberherd", tags=["cyberherd"]  #TODO: change to cyberherd
+    prefix="/cyberherd_extension", tags=["cyberherd"]
 )
 
 
 def cyberherd_renderer():
-    return template_renderer(["cyberherd/templates"]) #TODO: change to cyberherd
+    return template_renderer(["cyberherd_extension/templates"])
 
 
 from .tasks import wait_for_paid_invoices

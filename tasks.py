@@ -93,7 +93,7 @@ async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optio
         event = {
             "kind": 9734,
             "content": memo,
-            "pubkey": "PUBKEY",  # Replace with sender's pubkey #TODO: set From user split address from UI, add to DB  do this by setting a default lud16 address that is associated with a Nostr key. api_lnurlscan(payoraddress) returns that)
+            "pubkey": "PUBKEY",  # Sender's pubkey #TODO: set From user split address from UI, add to DB  do this by setting a default lud16 address that is associated with a Nostr key. api_lnurlscan(payoraddress) returns that)
             "created_at": round(time.time()),
             "tags": [
                 ["relays", *relays],
