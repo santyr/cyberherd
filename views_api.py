@@ -13,7 +13,7 @@ from .crud import get_targets, set_targets
 from .models import Target, TargetPutList
 
 
-@cyberherd_extension.get("/api/v1/targets")
+@cyberherd_ext.get("/api/v1/targets")
 async def api_targets_get(
     wallet: WalletTypeInfo = Depends(require_admin_key),
 ) -> List[Target]:
@@ -21,7 +21,7 @@ async def api_targets_get(
     return targets or []
 
 
-@cyberherd_extension.put("/api/v1/targets", status_code=HTTPStatus.OK)
+@cyberherd_ext.put("/api/v1/targets", status_code=HTTPStatus.OK)
 async def api_targets_set(
     target_put: TargetPutList,
     source_wallet: WalletTypeInfo = Depends(require_admin_key),
@@ -76,7 +76,7 @@ async def api_targets_set(
         )
 
 
-@cyberherd_extension.delete("/api/v1/targets", status_code=HTTPStatus.OK)
+@cyberherd_ext.delete("/api/v1/targets", status_code=HTTPStatus.OK)
 async def api_targets_delete(
     source_wallet: WalletTypeInfo = Depends(require_admin_key),
 ) -> None:
@@ -84,7 +84,7 @@ async def api_targets_delete(
 
 
 # deinit extension invoice listener
-@cyberherd_extension.delete(
+@cyberherd_ext.delete(
     "/api/v1", status_code=HTTPStatus.OK, dependencies=[Depends(check_admin)]
 )
 async def api_stop():
