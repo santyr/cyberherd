@@ -13,17 +13,17 @@ scheduled_tasks: List[asyncio.Task] = []
 
 cyberherd_static_files = [
     {
-        "path": "/cyberherd_extension/static",
+        "path": "/cyberherd/static",
         "name": "cyberherd_static",
     }
 ]
 cyberherd_ext: APIRouter = APIRouter(
-    prefix="/cyberherd_extension", tags=["cyberherd"]
+    prefix="/cyberherd", tags=["cyberherd"]
 )
 
 
 def cyberherd_renderer():
-    return template_renderer(["cyberherd_extension/templates"])
+    return template_renderer(["cyberherd/templates"])
 
 
 from .tasks import wait_for_paid_invoices

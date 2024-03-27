@@ -2,6 +2,8 @@ import asyncio
 import json
 from math import floor
 from typing import Optional
+import bech32
+import websockets
 import httpx
 import time
 from loguru import logger
@@ -14,6 +16,7 @@ from lnbits.core.crud import get_standalone_payment
 from lnbits.core.models import Payment
 from lnbits.core.services import create_invoice, fee_reserve, pay_invoice
 from lnbits.helpers import get_current_extension_name
+from lnbits.app import settings
 from lnbits.tasks import register_invoice_listener
 
 from .crud import get_targets
@@ -78,6 +81,41 @@ async def on_invoice_paid(payment: Payment) -> None:
                     description=memo,
                     extra=extra,
                 )
+                
+async def get_npub_address(    
+    pubkey: str
+) -> Optional[str]: 
+
+    print("trying to get npub: ", pubkey)
+    uri = f"ws://localhost:{settings.port}/nostrclient/api/v1/{relay_endpoint}"
+    jsonOb = ''
+
+    # TODO utilize a try except and find out why websocket is not connecting
+    async with websockets.connect(uri) as websocket:
+    #websocket = websockets.connect(uri)
+        req = '["REQ", "a",  {"kinds": [0], "limit": 10, "authors": ["'+ pubkey +'"]} ]'
+        ''' send req to websocket and print response'''
+        await websocket.send(req)                    
+        greeting = await websocket.recv()
+        output = json.loads(greeting)
+        jsonOb = json.loads(output[2]['content'])
+
+    #npubWallet06 = ''
+    #npubWallet16 = ''
+    npubWallet = ''                    
+    if "lud16" in jsonOb and npubWallet == '':
+        logger.info("we got a lud16: ", jsonOb["lud16"])
+        if len(jsonOb["lud16"]) > 1:
+            npubWallet = jsonOb["lud16"]
+    #if "lud06" in jsonOb:
+    #    logger.info("we got a lud06: ", jsonOb["lud06"])
+    #    if len(jsonOb["lud06"]) > 1:
+    #        npubWallet = jsonOb["lud06"]
+
+    if npubWallet == '':
+        print("Failed to get npub wallet")
+
+    return npubWallet
 
 async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optional[str]:
     from lnbits.core.views.api import api_lnurlscan
