@@ -1,5 +1,5 @@
 { 
-  "name": "CyberHerd", 
+  "name": "cyberherd_extension", 
   "short_description": "CyberHerd splits and Nostr client.",
   "tile": "/cyberherd/static/image/lightning-goats.png",
   "contributors": ["fiatjaf", "cryptograffiti", "santyr"],
