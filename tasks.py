@@ -21,16 +21,39 @@ from lnbits.tasks import register_invoice_listener
 
 from .crud import get_targets
 
-def serialize_event(event):
-    return json.dumps(event, sort_keys=True)
+def remove_id_and_sig(event: dict) -> dict:                                                                                                                 
+    return {k: v for k, v in event.items() if k not in ['id', 'sig']}
 
-def sign_event(event, private_key_hex):
-    serialized_event = serialize_event(event)
-    event_hash = hashlib.sha256(serialized_event.encode('utf-8')).digest()
-    sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
-    signature = sk.sign_deterministic(event_hash)
-    signature_b64 = base64.b64encode(signature).decode('utf-8')
-    return signature_b64
+def serialize_event(event: dict) -> bytes:                                                                                                                  
+    return json.dumps([                                                                                                                                     
+        0,                                                                                                                                                  
+        event['pubkey'],                                                                                                                                    
+        event['created_at'],                                                                                                                                
+        event['kind'],                                                                                                                                      
+        event.get('tags', []),                                                                                                                              
+        event.get('content', '')                                                                                                                            
+    ], separators=(',', ':'), ensure_ascii=False).encode('utf-8')                                                                                           
+
+def compute_event_hash(serialized_event: bytes) -> bytes:                                                                                                   
+    return hashlib.sha256(serialized_event).digest()
+
+def sign_event_hash(event_hash: bytes, private_key_hex: str) -> str:                                                                                        
+    sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)                                                                            
+    signature = sk.sign_deterministic(event_hash)    
+    return signature.hex()
+
+def update_event_with_id_and_sig(event: dict, event_hash: bytes, signature_hex: str) -> dict:                                                               
+    event['id'] = event_hash.hex()                                                                                                                          
+    event['sig'] = signature_hex                                                                                                                            
+    return event
+
+async def sign_event(event: dict, private_key_hex: str) -> dict:                                                                                            
+    event_to_sign = remove_id_and_sig(event)                                                                                                                
+    serialized_event = serialize_event(event_to_sign)                                                                                                       
+    event_hash = compute_event_hash(serialized_event)                                                                                                       
+    signature_hex = sign_event_hash(event_hash, private_key_hex)                                                                                            
+    signed_event = update_event_with_id_and_sig(event, event_hash, signature_hex)                                                                           
+    return signed_event
 
 async def wait_for_paid_invoices():
     invoice_queue = asyncio.Queue()
@@ -81,78 +104,41 @@ async def on_invoice_paid(payment: Payment) -> None:
                     description=memo,
                     extra=extra,
                 )
-                
-async def get_npub_address(    
-    pubkey: str
-) -> Optional[str]: 
-
-    print("trying to get npub: ", pubkey)
-    uri = f"ws://localhost:{settings.port}/nostrclient/api/v1/{relay_endpoint}"
-    jsonOb = ''
-
-    # TODO utilize a try except and find out why websocket is not connecting
-    async with websockets.connect(uri) as websocket:
-    #websocket = websockets.connect(uri)
-        req = '["REQ", "a",  {"kinds": [0], "limit": 10, "authors": ["'+ pubkey +'"]} ]'
-        ''' send req to websocket and print response'''
-        await websocket.send(req)                    
-        greeting = await websocket.recv()
-        output = json.loads(greeting)
-        jsonOb = json.loads(output[2]['content'])
-
-    #npubWallet06 = ''
-    #npubWallet16 = ''
-    npubWallet = ''                    
-    if "lud16" in jsonOb and npubWallet == '':
-        logger.info("we got a lud16: ", jsonOb["lud16"])
-        if len(jsonOb["lud16"]) > 1:
-            npubWallet = jsonOb["lud16"]
-    #if "lud06" in jsonOb:
-    #    logger.info("we got a lud06: ", jsonOb["lud06"])
-    #    if len(jsonOb["lud06"]) > 1:
-    #        npubWallet = jsonOb["lud06"]
-
-    if npubWallet == '':
-        print("Failed to get npub wallet")
-
-    return npubWallet
 
 async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optional[str]:
     from lnbits.core.views.api import api_lnurlscan
     data = await api_lnurlscan(payoraddress)
     rounded_amount = floor(amount_msat / 1000) * 1000
 
-    if not (data.get("minSendable") <= abs(rounded_amount) <= data.get("maxSendable")):
-        logger.error(f"Amount {rounded_amount} is out of bounds (min: {data.get('minSendable')}, max: {data.get('maxSendable')})")
-        return None
+	if not (data.get("minSendable") <= abs(rounded_amount) <= data.get('maxSendable')):
+    	logger.error(f"{lud16}: amount {rounded_amount} is out of bounds (min: {data['minSendable']}, max: {data['maxSendable']})")
+        return {"success": False, "message": "Amount out of bounds"}
 
-    if data.get("allowNostr") and data.get("nostrPubkey"):
-        relays = ['wss://nostr-pub.wellorder.net', 'wss://relay.damus.io', 'wss://relay.primal.net'] #TODO: set from UI, add to DB
-        event = {
-            "kind": 9734,
-            "content": memo,
-            "pubkey": "PUBKEY",  # Sender's pubkey #TODO: set From user split address from UI, add to DB  do this by setting a default lud16 address that is associated with a Nostr key. api_lnurlscan(payoraddress) returns that)
-            "created_at": round(time.time()),
-            "tags": [
-                ["relays", *relays],
-                ["amount", str(rounded_amount)],
-                ["p", data.get("nostrPubkey")],
+    if data.get("allowsNostr") and data.get("nostrPubkey"):
+        event_details = {
+           "kind": 9734,
+           "content": description or "CyberHerd Treats",
+           "tags": [
+               ["p", lnurl_data["nostrPubkey"]]
             ],
+            "pubkey": '669ebbcccf409ee0467a33660ae88fd17e5379e646e41d7c236ff4963f3c36b6',
+            "created_at": round(datetime.now().timestamp()),
         }
+        
+        signed_zap_event = await sign_event(event_details, nos_sec)  # Make sure sign_event is defined correctly to sign Nostr events
+        zap_event_encoded = quote(json.dumps(signed_zap_event))
+        zap_url = f"{data['callback']}?amount={rounded_amount}&nostr={zap_event_encoded}"
+        zap_response = await client.get(zap_url, headers=headers)
+        zap_response.raise_for_status()
 
-        event_json = json.dumps(event)
-        signed_event = sign_event(event_json, "PRIVATE_KEY")  # Signing the event #TODO: set PRIVATE_KEY from UI, add to DB. Double check that the data format is correct. Probably needs to be added to event_json
-
-        query_params = {
-            "amount": rounded_amount,
-            "nostr": signed_event,  # Include the event in the request  likely need to change to event_data (see TODO above)
-        }
+        invoice = zap_response.json().get('pr', None)
+        return invoice
 
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
                     data["callback"],  # The LNURL callback URL.  This request returns the invoice.
-                    params=query_params,
+                     params={"amount": rounded_amount, "comment": memo},
                     timeout=40
                 )
                 response.raise_for_status()
@@ -169,6 +155,7 @@ async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optio
             return None
 
         invoice = response_data.get("pr")
+        
         if not invoice:
             logger.error("No invoice received in response")
             return None
