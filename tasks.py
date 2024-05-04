@@ -110,8 +110,8 @@ async def get_lnurl_invoice(payoraddress, wallet_id, amount_msat, memo) -> Optio
     data = await api_lnurlscan(payoraddress)
     rounded_amount = floor(amount_msat / 1000) * 1000
 
-	if not (data.get("minSendable") <= abs(rounded_amount) <= data.get('maxSendable')):
-    	logger.error(f"{lud16}: amount {rounded_amount} is out of bounds (min: {data['minSendable']}, max: {data['maxSendable']})")
+    if not (data.get("minSendable") <= abs(rounded_amount) <= data.get('maxSendable')):
+        logger.error(f"{lud16}: amount {rounded_amount} is out of bounds (min: {data['minSendable']}, max: {data['maxSendable']})")
         return {"success": False, "message": "Amount out of bounds"}
 
     if data.get("allowsNostr") and data.get("nostrPubkey"):
